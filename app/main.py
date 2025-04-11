@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import os
 from app.twitter_service import TwitterService
 from app.api import api_bp
@@ -8,6 +8,10 @@ def create_app():
     
     # Register API blueprint
     app.register_blueprint(api_bp, url_prefix='/api')
+    
+    @app.route('/', methods=['GET'])
+    def index():
+        return render_template('index.html')
     
     @app.route('/health', methods=['GET'])
     def health_check():

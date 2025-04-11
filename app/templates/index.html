@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Poster API</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Twitter Poster API</h1>
+        
+        <form id="tweetForm">
+            <div class="form-group">
+                <label for="apiKey">API Key:</label>
+                <input type="text" id="apiKey" name="apiKey" value="6H7PkbJywxciTJwCfWJIypowj" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="apiSecret">API Secret:</label>
+                <input type="password" id="apiSecret" name="apiSecret" value="hJbObSkbPvIXF29BWbMqOnDeoDTnOo8CEeq60wnS20oJDr9xhj" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="accessToken">Access Token:</label>
+                <input type="text" id="accessToken" name="accessToken" value="1900101690990174208-RGYPJT5P1WkXu2PGBGoDFr2sYah8g2" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="accessSecret">Access Secret:</label>
+                <input type="password" id="accessSecret" name="accessSecret" value="T7BSURYSiwlwFjgwK8Oof82fj25byobtCYWlnLb4BiNLE" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="tweetText">Tweet Text:</label>
+                <textarea id="tweetText" name="tweetText" required>Тестовый твит из TwitterPoster API! #test #api</textarea>
+            </div>
+            
+            <div class="image-upload">
+                <label for="imageFile">Image (PNG only):</label>
+                <input type="file" id="imageFile" name="imageFile" accept="image/png">
+            </div>
+            
+            <div class="proxy-section">
+                <div class="proxy-toggle">
+                    <input type="checkbox" id="useProxy" name="useProxy">
+                    <label for="useProxy">Use Proxy</label>
+                </div>
+                
+                <div id="proxyFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="httpProxy">HTTP Proxy:</label>
+                        <input type="text" id="httpProxy" name="httpProxy" placeholder="http://user:pass@host:port">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="httpsProxy">HTTPS Proxy:</label>
+                        <input type="text" id="httpsProxy" name="httpsProxy" placeholder="https://user:pass@host:port">
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" id="submitBtn">Post Tweet</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Posting tweet...</p>
+        </div>
+        
+        <div class="response" id="response">
+            <h3 id="responseTitle"></h3>
+            <p id="responseMessage"></p>
+            <a href="#" id="tweetLink" class="tweet-link" target="_blank" style="display: none;">View Tweet</a>
+        </div>
+    </div>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>
