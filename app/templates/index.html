@@ -48,14 +48,31 @@
                 </div>
                 
                 <div id="proxyFields" style="display: none;">
-                    <div class="form-group">
-                        <label for="httpProxy">HTTP Proxy:</label>
-                        <input type="text" id="httpProxy" name="httpProxy" placeholder="http://user:pass@host:port">
+                    <div class="proxy-type">
+                        <input type="radio" id="httpProxyType" name="proxyType" value="http" checked>
+                        <label for="httpProxyType">HTTP/HTTPS</label>
+                        
+                        <input type="radio" id="socks5ProxyType" name="proxyType" value="socks5">
+                        <label for="socks5ProxyType">SOCKS5</label>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="httpsProxy">HTTPS Proxy:</label>
-                        <input type="text" id="httpsProxy" name="httpsProxy" placeholder="https://user:pass@host:port">
+                    <div id="httpProxyFields">
+                        <div class="form-group">
+                            <label for="httpProxy">HTTP Proxy:</label>
+                            <input type="text" id="httpProxy" name="httpProxy" placeholder="http://user:pass@host:port">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="httpsProxy">HTTPS Proxy:</label>
+                            <input type="text" id="httpsProxy" name="httpsProxy" placeholder="https://user:pass@host:port">
+                        </div>
+                    </div>
+                    
+                    <div id="socks5ProxyFields" style="display: none;">
+                        <div class="form-group">
+                            <label for="socks5Proxy">SOCKS5 Proxy:</label>
+                            <input type="text" id="socks5Proxy" name="socks5Proxy" placeholder="socks5://user:pass@host:port">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -72,6 +89,16 @@
             <h3 id="responseTitle"></h3>
             <p id="responseMessage"></p>
             <a href="#" id="tweetLink" class="tweet-link" target="_blank" style="display: none;">View Tweet</a>
+            
+            <div class="request-details">
+                <h4>Request Details:</h4>
+                <pre id="requestDetails"></pre>
+            </div>
+            
+            <div class="response-details">
+                <h4>Response Details:</h4>
+                <pre id="responseDetails"></pre>
+            </div>
         </div>
     </div>
     

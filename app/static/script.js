@@ -4,6 +4,21 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('proxyFields').style.display = this.checked ? 'block' : 'none';
     });
     
+    // Toggle proxy type fields
+    document.getElementById('httpProxyType').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('httpProxyFields').style.display = 'block';
+            document.getElementById('socks5ProxyFields').style.display = 'none';
+        }
+    });
+    
+    document.getElementById('socks5ProxyType').addEventListener('change', function() {
+        if (this.checked) {
+            document.getElementById('httpProxyFields').style.display = 'none';
+            document.getElementById('socks5ProxyFields').style.display = 'block';
+        }
+    });
+    
     // Handle form submission
     document.getElementById('tweetForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -32,13 +47,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add proxy if enabled
         if (useProxy) {
-            const httpProxy = document.getElementById('httpProxy').value;
-            const httpsProxy = document.getElementById('httpsProxy').value;
+            const proxyType = document.querySelector('input[name="proxyType"]:checked').value;
             
-            if (httpProxy || httpsProxy) {
-                requestData.proxy = {};
-                if (httpProxy) requestData.proxy.http = httpProxy;
-                if (httpsProxy) requestData.proxy.https = httpsProxy;
+            if (proxyType === 'http') {
+                const httpProxy = document.getElementById('httpProxy').value;
+                const httpsProxy = document.getElementById('httpsProxy').value;
+                
+                if (httpProxy || httpsProxy) {
+                    requestData.proxy = {};
+                    if (httpProxy) requestData.proxy.http = httpProxy;
+                    if (httpsProxy) requestData.proxy.https = httpsProxy;
+                }
+            } else if (proxyType === 'socks5') {
+                const socks5Proxy = document.getElementById('socks5Proxy').value;
+                
+                if (socks5Proxy) {
+                    requestData.proxy = {
+                        socks5: socks5Proxy
+                    };
+                }
             }
         }
         
@@ -92,6 +119,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('responseMessage').textContent = data.message;
                 document.getElementById('tweetLink').style.display = 'none';
             }
+            
+            // Display request and response details
+            if (data.request) {
+                document.getElementById('requestDetails').textContent = JSON.stringify(data.request, null, 2);
+            }
+            
+            if (data.response) {
+                document.getElementById('responseDetails').textContent = JSON.stringify(data.response, null, 2);
+            }
         })
         .catch(error => {
             // Hide loading spinner
@@ -105,6 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('responseTitle').textContent = 'Error';
             document.getElementById('responseMessage').textContent = 'Failed to connect to the server: ' + error.message;
             document.getElementById('tweetLink').style.display = 'none';
+            
+            // Clear request and response details
+            document.getElementById('requestDetails').textContent = '';
+            document.getElementById('responseDetails').textContent = '';
         });
     }
 });

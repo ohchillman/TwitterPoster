@@ -63,6 +63,13 @@ textarea {
     margin-bottom: 15px;
 }
 
+.proxy-type {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 5px;
+}
+
 button {
     background-color: #1da1f2;
     color: white;
@@ -126,4 +133,23 @@ button:hover {
 
 .tweet-link:hover {
     text-decoration: underline;
+}
+
+.request-details, .response-details {
+    margin-top: 20px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #e1e8ed;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 14px;
+    overflow-x: auto;
 }
