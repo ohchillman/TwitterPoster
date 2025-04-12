@@ -4,7 +4,11 @@ services:
   app:
     build: .
     ports:
+<<<<<<< Updated upstream
       - "5002:5000"
+=======
+      - "5002:5002"
+>>>>>>> Stashed changes
     restart: unless-stopped
     volumes:
       - ./:/app
