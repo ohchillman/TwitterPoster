@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const responseElement = document.getElementById('response');
             responseElement.style.display = 'block';
             
+            // Clear previous response details to avoid showing stale data
+            document.getElementById('responseDetails').textContent = '';
+            
             if (data.status === 'success') {
                 responseElement.className = 'response success';
                 document.getElementById('responseTitle').textContent = 'Tweet Posted Successfully!';
@@ -116,17 +119,30 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 responseElement.className = 'response error';
                 document.getElementById('responseTitle').textContent = 'Error';
-                document.getElementById('responseMessage').textContent = data.message;
+                document.getElementById('responseMessage').textContent = data.message || data.error || 'Unknown error occurred';
                 document.getElementById('tweetLink').style.display = 'none';
             }
             
-            // Display request and response details
+            // Display request details
             if (data.request) {
                 document.getElementById('requestDetails').textContent = JSON.stringify(data.request, null, 2);
+            } else {
+                document.getElementById('requestDetails').textContent = '';
             }
             
-            if (data.response) {
+            // Display response details - handle both success and error cases
+            if (data.status === 'success' && data.response) {
                 document.getElementById('responseDetails').textContent = JSON.stringify(data.response, null, 2);
+            } else if (data.status === 'error' && data.response) {
+                // For error responses, display the response details
+                document.getElementById('responseDetails').textContent = JSON.stringify(data.response, null, 2);
+            } else if (data.status === 'error') {
+                // If no response details but we have an error message, create a simple error object
+                const errorObj = {
+                    status: 'error',
+                    error: data.message || data.error || 'Unknown error occurred'
+                };
+                document.getElementById('responseDetails').textContent = JSON.stringify(errorObj, null, 2);
             }
         })
         .catch(error => {
@@ -142,9 +158,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('responseMessage').textContent = 'Failed to connect to the server: ' + error.message;
             document.getElementById('tweetLink').style.display = 'none';
             
-            // Clear request and response details
+            // Clear request details
             document.getElementById('requestDetails').textContent = '';
-            document.getElementById('responseDetails').textContent = '';
+            
+            // Display error in response details
+            const errorObj = {
+                status: 'error',
+                error: 'Failed to connect to the server: ' + error.message
+            };
+            document.getElementById('responseDetails').textContent = JSON.stringify(errorObj, null, 2);
         });
     }
 });
