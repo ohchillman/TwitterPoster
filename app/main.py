@@ -51,13 +51,23 @@ def create_app():
                 
             result = twitter_service.post_tweet(data['text'], image_data)
             
+            # Check if the result indicates an error
+            if result.get('status') == 'error':
+                error_response = {
+                    "status": "error",
+                    "message": result.get('error', 'Unknown error occurred'),
+                    "request": result.get('request', {}),
+                    "response": result.get('response', {})
+                }
+                return jsonify(error_response), 500
+            
             # Return complete result including request and response details
             response = {
                 "status": "success",
-                "tweet_url": result['tweet_url'],
-                "tweet_id": result['tweet_id'],
-                "request": result['request'],
-                "response": result['response']
+                "tweet_url": result.get('tweet_url'),
+                "tweet_id": result.get('tweet_id'),
+                "request": result.get('request', {}),
+                "response": result.get('response', {})
             }
             
             return jsonify(response), 201

@@ -25,7 +25,14 @@ class TwitterService:
         self.access_token = access_token
         self.access_secret = access_secret
         self.proxy = proxy
-        self.client = self._create_client()
+        self.client = None
+        
+        # Initialize client with proper error handling for proxy issues
+        try:
+            self.client = self._create_client()
+        except Exception as e:
+            # Store the initialization error to report it later
+            self.init_error = str(e)
         
     def _create_client(self):
         """
@@ -33,6 +40,9 @@ class TwitterService:
         
         Returns:
             tweepy.Client: Configured Twitter API client
+        
+        Raises:
+            Exception: If proxy configuration fails
         """
         # Create client with authentication
         client = tweepy.Client(
@@ -67,6 +77,9 @@ class TwitterService:
                 else:
                     socks.set_default_proxy(socks.SOCKS5, proxy_host, proxy_port)
                 
+                # Test proxy connection before patching socket
+                self._test_proxy_connection(proxy_host, proxy_port)
+                
                 # Patch the socket module
                 socket.socket = socks.socksocket
                 
@@ -79,6 +92,29 @@ class TwitterService:
             client._api = api
             
         return client
+    
+    def _test_proxy_connection(self, host, port):
+        """
+        Test proxy connection before using it
+        
+        Args:
+            host (str): Proxy host
+            port (int): Proxy port
+            
+        Raises:
+            Exception: If proxy connection fails
+        """
+        try:
+            # Create a test socket
+            test_socket = socks.socksocket()
+            test_socket.set_proxy(socks.SOCKS5, host, port)
+            
+            # Try to connect to Twitter API (timeout after 5 seconds)
+            test_socket.settimeout(5)
+            test_socket.connect(('api.twitter.com', 443))
+            test_socket.close()
+        except Exception as e:
+            raise Exception(f"Proxy connection test failed: {str(e)}")
     
     def post_tweet(self, text, image_data=None):
         """
@@ -105,10 +141,28 @@ class TwitterService:
         
         response_details = {}
         
+        # Check if client initialization failed
+        if self.client is None:
+            error_message = getattr(self, 'init_error', 'Client initialization failed')
+            response_details["status"] = "error"
+            response_details["error"] = error_message
+            
+            return {
+                "status": "error",
+                "error": error_message,
+                "request": request_details,
+                "response": response_details
+            }
+        
         try:
             if not image_data:
                 # Post text-only tweet
                 response = self.client.create_tweet(text=text)
+                
+                # Verify that we got a valid response
+                if not response or not hasattr(response, 'data') or 'id' not in response.data:
+                    raise Exception("Invalid response from Twitter API")
+                    
                 tweet_id = response.data['id']
                 response_details["tweet_type"] = "text_only"
             else:
@@ -138,6 +192,11 @@ class TwitterService:
                 
                 # Post tweet with media
                 response = self.client.create_tweet(text=text, media_ids=[media_id])
+                
+                # Verify that we got a valid response
+                if not response or not hasattr(response, 'data') or 'id' not in response.data:
+                    raise Exception("Invalid response from Twitter API")
+                    
                 tweet_id = response.data['id']
                 response_details["tweet_type"] = "with_image"
             
@@ -149,6 +208,7 @@ class TwitterService:
             response_details["tweet_url"] = tweet_url
             
             return {
+                "status": "success",
                 "tweet_id": tweet_id,
                 "tweet_url": tweet_url,
                 "request": request_details,
@@ -160,4 +220,9 @@ class TwitterService:
             response_details["status"] = "error"
             response_details["error"] = error_message
             
-            raise Exception(error_message)
+            return {
+                "status": "error",
+                "error": error_message,
+                "request": request_details,
+                "response": response_details
+            }
