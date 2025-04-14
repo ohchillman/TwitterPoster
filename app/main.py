@@ -30,7 +30,17 @@ def create_app():
             error_response = {
                 "status": "error",
                 "message": f"Missing required fields: {', '.join(missing_fields)}",
-                "request": data
+                "request": {
+                    "credentials": {
+                        "api_key": data.get('api_key', ''),
+                        "api_secret": "***" + data.get('api_secret', '')[-4:] if data.get('api_secret') and len(data.get('api_secret')) > 4 else "***",
+                        "access_token": data.get('access_token', ''),
+                        "access_secret": "***" + data.get('access_secret', '')[-4:] if data.get('access_secret') and len(data.get('access_secret')) > 4 else "***"
+                    },
+                    "text": data.get('text', ''),
+                    "has_image": 'image' in data and data['image'] is not None,
+                    "proxy_settings": data.get('proxy')
+                }
             }
             return jsonify(error_response), 400
         
@@ -55,7 +65,7 @@ def create_app():
             if result.get('status') == 'error':
                 error_response = {
                     "status": "error",
-                    "message": result.get('error', 'Unknown error occurred'),
+                    "error": result.get('error', 'Unknown error occurred'),
                     "request": result.get('request', {}),
                     "response": result.get('response', {})
                 }
@@ -73,21 +83,38 @@ def create_app():
             return jsonify(response), 201
             
         except Exception as e:
+            error_message = str(e)
+            
+            # Проверяем, не связана ли ошибка с прокси
+            proxy_error = None
+            if data.get('proxy') and ("proxy" in error_message.lower() or "socket" in error_message.lower() or "connect" in error_message.lower()):
+                try:
+                    # Attempt to directly test proxy connection
+                    proxy_working, proxy_error = twitter_service._test_proxy_connection(data.get('proxy'))
+                    if not proxy_working:
+                        error_message = f"Proxy connection test failed: {proxy_error}"
+                except Exception as proxy_test_error:
+                    proxy_error = str(proxy_test_error)
+            
             error_response = {
                 "status": "error",
-                "message": str(e),
+                "message": error_message,
                 "request": {
                     "credentials": {
                         "api_key": data['api_key'],
-                        "api_secret": "***" + data['api_secret'][-4:],
+                        "api_secret": "***" + data['api_secret'][-4:] if len(data['api_secret']) > 4 else "***",
                         "access_token": data['access_token'],
-                        "access_secret": "***" + data['access_secret'][-4:]
+                        "access_secret": "***" + data['access_secret'][-4:] if len(data['access_secret']) > 4 else "***"
                     },
                     "text": data['text'],
                     "has_image": 'image' in data and data['image'] is not None,
                     "proxy_settings": data.get('proxy')
                 }
             }
+            
+            if proxy_error:
+                error_response["proxy_error"] = proxy_error
+                
             return jsonify(error_response), 500
     
     return app

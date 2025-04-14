@@ -28,6 +28,13 @@ class TwitterService:
         self.proxy = proxy
         self.client = None
         
+        # Проверка прокси перед созданием клиента
+        if self.proxy:
+            proxy_working, proxy_error = self._test_proxy_connection(self.proxy)
+            if not proxy_working:
+                self.init_error = f"Proxy connection test failed: {proxy_error}"
+                return
+        
         # Initialize client with proper error handling for proxy issues
         try:
             self.client = self._create_client()
@@ -128,7 +135,7 @@ class TwitterService:
                     socks.set_default_proxy(socks.SOCKS5, proxy_host, proxy_port)
                 
                 # Test proxy connection before patching socket
-                self._test_proxy_connection(proxy_host, proxy_port, proxy_user, proxy_pass)
+                self._test_proxy_connection(self.proxy)
                 
                 # Patch the socket module
                 socket.socket = socks.socksocket
@@ -143,35 +150,104 @@ class TwitterService:
             
         return client
     
-    def _test_proxy_connection(self, host, port, username=None, password=None):
+    def _test_proxy_connection(self, proxy_settings):
         """
-        Test proxy connection before using it
+        Выполняет прямую проверку работоспособности прокси
+        Возвращает (success, error_message)
+        """
+        if not proxy_settings:
+            return True, None
         
-        Args:
-            host (str): Proxy host
-            port (int): Proxy port
-            username (str, optional): Proxy username
-            password (str, optional): Proxy password
-            
-        Raises:
-            Exception: If proxy connection fails
-        """
+        # Извлекаем настройки прокси
+        proxy_host = None
+        proxy_port = None
+        proxy_user = None
+        proxy_pass = None
+        protocol = "http"
+        
+        if 'socks5' in proxy_settings:
+            proxy_url = proxy_settings.get('socks5')
+            try:
+                proxy_host, proxy_port, proxy_user, proxy_pass = self._parse_proxy_url(proxy_url)
+                protocol = "socks5"
+            except Exception as e:
+                return False, f"Failed to parse SOCKS5 proxy URL: {str(e)}"
+        elif 'http' in proxy_settings or 'https' in proxy_settings:
+            proxy_url = proxy_settings.get('https') or proxy_settings.get('http')
+            try:
+                parsed = urlparse(proxy_url)
+                proxy_host = parsed.hostname
+                proxy_port = parsed.port
+                proxy_user = parsed.username
+                proxy_pass = parsed.password
+                protocol = "http" if proxy_url.startswith("http://") else "https"
+            except Exception as e:
+                return False, f"Failed to parse HTTP proxy URL: {str(e)}"
+        else:
+            return False, "No valid proxy configuration found"
+        
+        if not proxy_host or not proxy_port:
+            return False, "Proxy specified incorrectly, check host and port settings"
+        
+        # Формируем URL прокси для тестирования
+        proxy_url_for_test = f"{protocol}://"
+        
+        # Добавляем учетные данные, если они предоставлены
+        if proxy_user and proxy_pass:
+            proxy_url_for_test += f"{proxy_user}:{proxy_pass}@"
+        
+        proxy_url_for_test += f"{proxy_host}:{proxy_port}"
+        
+        proxies = {
+            "http": proxy_url_for_test,
+            "https": proxy_url_for_test
+        }
+        
         try:
-            # Create a test socket
-            test_socket = socks.socksocket()
+            print(f"Testing proxy connection: {protocol}://{proxy_host}:{proxy_port}")
+            # Используем Twitter API для проверки
+            test_url = "https://api.twitter.com/2/users/me"
             
-            # Configure proxy with authentication if provided
-            if username and password:
-                test_socket.set_proxy(socks.SOCKS5, host, port, username=username, password=password)
+            # Делаем запрос с таймаутом
+            response = requests.get(
+                test_url,
+                proxies=proxies,
+                timeout=5,
+                # Не проверяем статус ответа, только соединение
+                allow_redirects=False
+            )
+            
+            print(f"Proxy is working, received response with code: {response.status_code}")
+            return True, None
+            
+        except requests.exceptions.ProxyError as e:
+            error_msg = str(e)
+            if "SOCKS5" in error_msg.upper():
+                error_msg = "Socket error: SOCKS5 authentication failed"
+            elif "SOCKS4" in error_msg.upper():
+                error_msg = "Socket error: SOCKS4 connection failed"
+            elif "authentication" in error_msg.lower():
+                error_msg = f"Socket error: {protocol.upper()} authentication failed"
             else:
-                test_socket.set_proxy(socks.SOCKS5, host, port)
+                error_msg = f"Socket error: {protocol.upper()} connection failed"
             
-            # Try to connect to Twitter API (timeout after 5 seconds)
-            test_socket.settimeout(5)
-            test_socket.connect(('api.twitter.com', 443))
-            test_socket.close()
-        except Exception as e:
-            raise Exception(f"Proxy connection test failed: {str(e)}")
+            print(f"Proxy error during direct test: {error_msg}")
+            return False, error_msg
+            
+        except requests.exceptions.Timeout as e:
+            error_msg = f"Socket error: {protocol.upper()} connection timeout"
+            print(f"Proxy connection timeout during direct test: {error_msg}")
+            return False, error_msg
+            
+        except requests.RequestException as e:
+            error_msg = str(e)
+            if "connection" in error_msg.lower():
+                error_msg = f"Socket error: Could not connect to {protocol.upper()} proxy"
+            else:
+                error_msg = f"Socket error: {protocol.upper()} proxy error - {error_msg}"
+            
+            print(f"Request error through proxy during direct test: {error_msg}")
+            return False, error_msg
     
     def post_tweet(self, text, image_data=None):
         """
@@ -211,6 +287,21 @@ class TwitterService:
                 "response": response_details
             }
         
+        # Повторная проверка прокси перед публикацией, если необходимо
+        if self.proxy:
+            proxy_working, proxy_error = self._test_proxy_connection(self.proxy)
+            if not proxy_working:
+                error_message = f"Proxy connection test failed: {proxy_error}"
+                response_details["status"] = "error"
+                response_details["error"] = error_message
+                
+                return {
+                    "status": "error",
+                    "error": error_message,
+                    "request": request_details,
+                    "response": response_details
+                }
+        
         try:
             if not image_data:
                 # Post text-only tweet
@@ -232,6 +323,11 @@ class TwitterService:
                 
                 # Configure API with proxy if provided
                 if self.proxy:
+                    # Проверяем прокси перед загрузкой изображения
+                    proxy_working, proxy_error = self._test_proxy_connection(self.proxy)
+                    if not proxy_working:
+                        raise Exception(f"Proxy connection test failed before image upload: {proxy_error}")
+                        
                     if 'socks5' in self.proxy:
                         # SOCKS5 proxy is already configured at socket level
                         api = tweepy.API(auth)
@@ -242,10 +338,13 @@ class TwitterService:
                     api = tweepy.API(auth)
                 
                 # Decode base64 image
-                image_binary = base64.b64decode(image_data)
-                media = api.media_upload(filename='image.png', file=io.BytesIO(image_binary))
-                media_id = media.media_id
-                response_details["media_id"] = media_id
+                try:
+                    image_binary = base64.b64decode(image_data)
+                    media = api.media_upload(filename='image.png', file=io.BytesIO(image_binary))
+                    media_id = media.media_id
+                    response_details["media_id"] = media_id
+                except Exception as e:
+                    raise Exception(f"Failed to upload image: {str(e)}")
                 
                 # Post tweet with media
                 response = self.client.create_tweet(text=text, media_ids=[media_id])
@@ -276,6 +375,13 @@ class TwitterService:
             error_message = str(e)
             response_details["status"] = "error"
             response_details["error"] = error_message
+            
+            # Проверяем, не связана ли ошибка с прокси
+            if self.proxy and ("proxy" in error_message.lower() or "socket" in error_message.lower() or "connect" in error_message.lower()):
+                proxy_working, proxy_error = self._test_proxy_connection(self.proxy)
+                if not proxy_working:
+                    error_message = f"Proxy connection test failed: {proxy_error}"
+                    response_details["error"] = error_message
             
             return {
                 "status": "error",
